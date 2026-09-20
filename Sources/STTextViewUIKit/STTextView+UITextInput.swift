@@ -20,11 +20,14 @@ extension STTextView: UITextInput {
         }
         set {
             inputDelegate?.selectionWillChange(self)
-            if let textRange = newValue?.nsTextRange {
-                textLayoutManager.textSelections = [
-                    NSTextSelection(range: textRange, affinity: .downstream, granularity: .character)
-                ]
-                updateTypingAttributes(at: textRange.location)
+            if let newValue {
+                // A foreign range UIKit did not create yields nil: leave the selection untouched.
+                if let textRange = newValue.nsTextRange {
+                    textLayoutManager.textSelections = [
+                        NSTextSelection(range: textRange, affinity: .downstream, granularity: .character)
+                    ]
+                    updateTypingAttributes(at: textRange.location)
+                }
             } else {
                 textLayoutManager.textSelections = []
             }
@@ -44,15 +47,17 @@ extension STTextView: UITextInput {
     public func text(in range: UITextRange) -> String? {
         // FB13810290: UITextInput.textInRange is not maked as nullable, that result in crash when used from Swift
         let range: UITextRange? = range
-        guard let range else {
+        guard let range, let textRange = range.nsTextRange else {
             return nil
         }
 
-        return textContentManager.attributedString(in: range.nsTextRange)?.string
+        return textContentManager.attributedString(in: textRange)?.string
     }
 
     public func replace(_ range: UITextRange, withText text: String) {
-        let textRange = range.nsTextRange
+        guard let textRange = range.nsTextRange else {
+            return
+        }
 
         if shouldChangeText(in: textRange, replacementString: text) {
             inputDelegate?.selectionWillChange(self)
@@ -253,16 +258,24 @@ extension STTextView: UITextInput {
     }
 
     public func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {
+        guard let textRange = range.nsTextRange else {
+            return
+        }
+
         textContentManager.performEditingTransaction {
             let attrs: [NSAttributedString.Key: Any] = [:]
-            (textContentManager as? NSTextContentStorage)?.textStorage?.setAttributes(attrs, range: NSRange(range.nsTextRange, in: textContentManager))
+            (textContentManager as? NSTextContentStorage)?.textStorage?.setAttributes(attrs, range: NSRange(textRange, in: textContentManager))
         }
     }
 
     /* Geometry used to provide, for example, a correction rect. */
 
     public func firstRect(for range: UITextRange) -> CGRect {
-        textLayoutManager.textSegmentFrame(in: range.nsTextRange, type: .standard)?.moved(by: contentView.frame.origin) ?? .zero
+        guard let textRange = range.nsTextRange else {
+            return .zero
+        }
+
+        return textLayoutManager.textSegmentFrame(in: textRange, type: .standard)?.moved(by: contentView.frame.origin) ?? .zero
     }
 
     public func caretRect(for position: UITextPosition) -> CGRect {
@@ -342,7 +355,7 @@ extension STTextView: UITextInput {
         }
 
         var result: [UITextSelectionRect] = []
-        textLayoutManager.enumerateTextSegments(in: range.nsTextRange, type: .selection, options: .upstreamAffinity) { (textSegmentRange, textSegmentFrame, _, _) in
+        textLayoutManager.enumerateTextSegments(in: range.textRange, type: .selection, options: .upstreamAffinity) { (textSegmentRange, textSegmentFrame, _, _) in
 
             var containsStart: Bool {
                 if let textSegmentRange, textSegmentRange.location == range.textRange.location {

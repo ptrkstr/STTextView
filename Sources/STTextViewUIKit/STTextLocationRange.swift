@@ -34,10 +34,12 @@ extension NSTextRange {
 }
 
 extension UITextRange {
-    var nsTextRange: NSTextRange {
-        guard let range = self as? STTextLocationRange else {
-            fatalError("Invalid type")
-        }
-        return range.textRange
+    /// The backing `NSTextRange`, or `nil` when UIKit supplies a range the library did not create.
+    ///
+    /// UIKit does not guarantee every `UITextRange` came from us. `UITextInteraction`, for example,
+    /// passes a private UIKit range class when a user taps a misspelled word with autocorrection on.
+    /// Callers must treat a `nil` result as "do nothing" and use their existing empty fallback.
+    var nsTextRange: NSTextRange? {
+        (self as? STTextLocationRange)?.textRange
     }
 }

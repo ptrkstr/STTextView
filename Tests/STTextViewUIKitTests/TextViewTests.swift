@@ -34,6 +34,37 @@
             waitForExpectations(timeout: 1)
         }
 
+        // UIKit can hand back a UITextRange the library did not create (for example, UITextInteraction
+        // passes a private range class when a user taps a misspelled word with autocorrection on).
+        // Each of these entry points must fall back gracefully instead of trapping.
+        func testForeignTextRangeFallsBackGracefully() {
+            let textView = STTextView()
+            textView.text = "0123456789"
+            let foreign = ForeignTextRange()
+
+            XCTAssertNil(textView.text(in: foreign))
+            XCTAssertEqual(textView.firstRect(for: foreign), .zero)
+            XCTAssertTrue(textView.selectionRects(for: foreign).isEmpty)
+
+            // No-ops that must not crash.
+            textView.replace(foreign, withText: "x")
+            textView.setBaseWritingDirection(.leftToRight, for: foreign)
+            XCTAssertEqual(textView.text, "0123456789")
+
+            // A foreign range leaves the existing selection untouched.
+            let selectionBefore = textView.selectedTextRange
+            textView.selectedTextRange = foreign
+            XCTAssertEqual(textView.selectedTextRange?.isEmpty, selectionBefore?.isEmpty)
+        }
+
+    }
+
+    /// A `UITextRange` subclass that is not the library's own `STTextLocationRange`, standing in for the
+    /// private range classes UIKit passes back in some interactions.
+    private final class ForeignTextRange: UITextRange {
+        override var start: UITextPosition { UITextPosition() }
+        override var end: UITextPosition { UITextPosition() }
+        override var isEmpty: Bool { true }
     }
 
 
