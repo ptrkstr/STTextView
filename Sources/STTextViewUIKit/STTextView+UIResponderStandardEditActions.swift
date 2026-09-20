@@ -75,8 +75,8 @@ extension STTextView {
     /// The command is used for the targeted selection of content in a view.
     /// For example, a text view uses this to select one or more words in the view and to display the selection interface.
     @objc override open func select(_ sender: Any?) {
-        if let selectedTextRange {
-            let positionSelection = NSTextSelection(range: selectedTextRange.nsTextRange, affinity: .downstream, granularity: .word)
+        if let selectedTextRange, let nsTextRange = selectedTextRange.nsTextRange {
+            let positionSelection = NSTextSelection(range: nsTextRange, affinity: .downstream, granularity: .word)
 
             let destinationBackward = textLayoutManager.textSelectionNavigation.destinationSelection(
                 for: positionSelection,

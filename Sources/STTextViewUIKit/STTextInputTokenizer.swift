@@ -133,11 +133,11 @@ final class STTextInputTokenizer: NSObject, UITextInputTokenizer {
             }
         }
 
-        guard let r else {
+        guard let r, let nsTextRange = r.nsTextRange else {
             return false
         }
 
-        return r.nsTextRange.contains(position.location)
+        return nsTextRange.contains(position.location)
     }
 
 }
